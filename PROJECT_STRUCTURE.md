@@ -26,6 +26,7 @@ Alpha-X/
 │   ├── analyzer.py                 # Data analysis & insights
 │   ├── whatsapp_client.py          # WhatsApp messaging via Twilio
 │   ├── summarize_last_week.py      # Quick 7-day summary (recommended)
+│   ├── summarize_last_month.py     # Detailed 30-day monthly analysis
 │   ├── main.py                     # Main application entry
 │   ├── scheduler.py                # Automated weekly reports
 │   └── test_connection.py          # Connection test suite

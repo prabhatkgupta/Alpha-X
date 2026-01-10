@@ -97,11 +97,17 @@ YOUR_WHATSAPP_NUMBER=whatsapp:+your_country_code_and_number
 
 ### Quick Summary (Recommended)
 
-Get summary of your last 7 entries:
+**Weekly Summary** - Get summary of your last 7 entries:
 ```bash
 python src/summarize_last_week.py
 ```
 This automatically fetches the last 7 rows from your sheet, analyzes them, and sends insights to WhatsApp.
+
+**Monthly Summary** - Get detailed analysis of last 30 days:
+```bash
+python src/summarize_last_month.py
+```
+Provides comprehensive monthly report with trends, week-over-week comparisons, and detailed insights.
 
 ### Manual Run
 
@@ -142,6 +148,7 @@ Alpha-X/
 ├── src/
 │   ├── main.py                  # Main application entry
 │   ├── summarize_last_week.py   # Quick 7-day summary (recommended)
+│   ├── summarize_last_month.py  # Detailed 30-day analysis
 │   ├── sheets_client.py         # Google Sheets integration
 │   ├── analyzer.py              # Data analysis and insights
 │   ├── whatsapp_client.py       # WhatsApp messaging

@@ -2,9 +2,9 @@
 
 Quick reference for running Alpha-X commands.
 
-## 🚀 Most Common Use Case
+## 🚀 Most Common Use Cases
 
-### Get Summary of Last 7 Entries
+### 1. Get Weekly Summary (Last 7 Entries)
 
 ```bash
 python src/summarize_last_week.py
@@ -14,12 +14,40 @@ python src/summarize_last_week.py
 - Automatically fetches the **last 7 rows** from your Google Sheet
 - No date filtering - just grabs your most recent entries
 - Analyzes performance across all 4 goals
-- Sends insights to your WhatsApp
+- Sends quick insights to your WhatsApp
 
 **When to use:**
-- Daily check-ins
+- Daily/weekly check-ins
 - Anytime you want to see how your last week went
 - When you've filled 7+ entries in your form
+
+---
+
+### 2. Get Monthly Summary (Last 30 Days)
+
+```bash
+python src/summarize_last_month.py
+```
+
+**What it does:**
+- Fetches **last 30 days** of data from your Google Sheet
+- Provides **detailed analysis** with percentages and trends
+- Shows **week-over-week improvements** or declines
+- Identifies **top achievements** and **areas for improvement**
+- Sends comprehensive report to WhatsApp (may split into parts if long)
+
+**What's different from weekly:**
+- 📊 More detailed metrics with percentages
+- 📈 Trend analysis (first week vs last week)
+- 🏆 Achievement highlights
+- 💡 Specific recommendations for next month
+- 📉 Week-over-week comparisons
+
+**When to use:**
+- End of each month for comprehensive review
+- Before setting goals for next month
+- When you want detailed trend analysis
+- For performance evaluations
 
 ---
 
@@ -75,10 +103,17 @@ python src/scheduler.py
 ## 🤔 Which Command Should I Use?
 
 ### Use `summarize_last_week.py` if:
-- ✅ You want quick insights on demand
+- ✅ You want **quick weekly insights** on demand
 - ✅ You fill your form daily but not exactly 7 days per week
 - ✅ You want the most recent data regardless of dates
-- ✅ You prefer simplicity
+- ✅ You prefer **simplicity and speed**
+
+### Use `summarize_last_month.py` if:
+- ✅ You want **detailed monthly analysis**
+- ✅ You need **trend analysis** and week-over-week comparisons
+- ✅ It's end of month and you want comprehensive review
+- ✅ You want to see **achievements and improvement areas**
+- ✅ You're planning goals for next month
 
 ### Use `main.py` if:
 - ✅ You want calendar week-based reports (Mon-Sun)
@@ -95,25 +130,31 @@ python src/scheduler.py
 
 ## 📝 Examples
 
-### Scenario 1: Daily Check-In
+### Scenario 1: Daily/Weekly Check-In
 ```bash
 # You filled the form for last 7 days, want to see progress
 python src/summarize_last_week.py
 ```
 
-### Scenario 2: Weekly Review on Sunday
+### Scenario 2: Monthly Review
 ```bash
-# Automated - runs every Sunday at 8 PM
+# End of month - want detailed analysis with trends
+python src/summarize_last_month.py
+```
+
+### Scenario 3: Automated Weekly Reports
+```bash
+# Runs every Sunday at 1 PM automatically
 python src/scheduler.py
 ```
 
-### Scenario 3: Look Back at Previous Week
+### Scenario 4: Look Back at Previous Week
 ```bash
 # Get insights from 2 weeks ago
 python src/main.py --weeks-ago 2
 ```
 
-### Scenario 4: First Time Setup
+### Scenario 5: First Time Setup
 ```bash
 # Test everything works
 python src/test_connection.py
