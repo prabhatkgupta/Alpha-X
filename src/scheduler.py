@@ -27,13 +27,13 @@ def run_scheduler():
     print("Press Ctrl+C to stop the scheduler")
     print("=" * 70)
     print()
-    
+
     # Schedule: Every Sunday at 1:00 PM (13:00)
     schedule.every().sunday.at("13:00").do(send_weekly_summary)
-    
+
     # For testing: uncomment to run every minute
     # schedule.every(1).minutes.do(send_weekly_summary)
-    
+
     # Keep the scheduler running
     try:
         while True:
@@ -45,4 +45,3 @@ def run_scheduler():
 
 if __name__ == "__main__":
     run_scheduler()
-
