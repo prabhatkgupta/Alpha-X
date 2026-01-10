@@ -132,7 +132,7 @@ Run the scheduler (sends reports every Sunday at 1 PM):
 python src/scheduler.py
 ```
 
-**Want to set up automatic weekly summaries?** See [SCHEDULING_GUIDE.md](SCHEDULING_GUIDE.md) for:
+**Want to set up automatic weekly summaries?** See [SCHEDULING_GUIDE.md](docs/SCHEDULING_GUIDE.md) for:
 - Cron jobs (Mac/Linux)
 - Task Scheduler (Windows)
 - GitHub Actions (Cloud-based)

@@ -61,7 +61,7 @@ python src/scheduler.py
 
 ## 🆘 Need Help?
 
-See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed instructions.
+See [SETUP_GUIDE.md](../SETUP_GUIDE.md) for detailed instructions.
 
 ## 📊 Sample Report
 

@@ -336,5 +336,5 @@ python src/summarize_last_week.py
 
 ---
 
-**💡 Need help?** Check the main [README.md](README.md) or [SETUP_GUIDE.md](SETUP_GUIDE.md)
+**💡 Need help?** Check the main [README.md](../README.md) or [SETUP_GUIDE.md](../SETUP_GUIDE.md)
 

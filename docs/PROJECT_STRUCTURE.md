@@ -8,16 +8,20 @@ Complete overview of Alpha-X - Your personal tracking and insights system.
 Alpha-X/
 │
 ├── 📄 README.md                    # Main project documentation
-├── 📄 QUICKSTART.md                # Quick setup guide (10 mins)
 ├── 📄 SETUP_GUIDE.md               # Detailed setup instructions
-├── 📄 PROJECT_STRUCTURE.md         # This file
 ├── 📄 LICENSE                      # MIT License
 ├── 📄 requirements.txt             # Python dependencies
 ├── 📄 pytest.ini                   # Test configuration
 ├── 📄 .env.example                 # Environment variables template
 ├── 📄 .env                         # Your secrets (not in git)
 ├── 📄 .gitignore                   # Git ignore rules
+├── 📄 USAGE.md                     # Usage instructions
 ├── 📜 setup.sh                     # Automated setup script
+│
+├── 📂 docs/                        # Documentation
+│   ├── PROJECT_STRUCTURE.md        # This file - architecture overview
+│   ├── QUICKSTART.md               # Quick setup guide (10 mins)
+│   └── SCHEDULING_GUIDE.md         # Scheduling & automation guide
 │
 ├── 📂 src/                         # Source code
 │   ├── __init__.py                 # Package initializer
@@ -208,10 +212,12 @@ Potential features to add:
 ## 📚 Documentation Files
 
 1. **README.md** - Main project overview
-2. **QUICKSTART.md** - Get started in 10 minutes
+2. **docs/QUICKSTART.md** - Get started in 10 minutes
 3. **SETUP_GUIDE.md** - Step-by-step detailed setup
-4. **PROJECT_STRUCTURE.md** - This file (architecture overview)
-5. **credentials/README.md** - Credentials setup guide
+4. **docs/PROJECT_STRUCTURE.md** - This file (architecture overview)
+5. **docs/SCHEDULING_GUIDE.md** - Automation and scheduling options
+6. **USAGE.md** - Usage instructions
+7. **credentials/README.md** - Credentials setup guide
 
 ## 🎓 Learning Resources
 
@@ -243,4 +249,5 @@ For issues or questions:
 ---
 
 **Built with ❤️ for personal growth tracking**
+
 
