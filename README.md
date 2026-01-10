@@ -246,7 +246,7 @@ Want to track only certain goals? No problem!
 
 - Verify your Twilio credentials are correct
 - If using sandbox, ensure you've joined the sandbox with your WhatsApp number
-- Check your Twilio account balance
+- Check your Twilio account balance (free account still works)
 
 ### No Data Found
 
