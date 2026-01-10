@@ -250,7 +250,7 @@ Want to track only certain goals? No problem!
 
 ### No Data Found
 
-- Verify the GOOGLE_SHEET_ID is correct
+- Verify the GOOGLE_SHEET_URL is correct
 - Check that your sheet has data in the expected format
 - Ensure the sheet name/tab is correct in the code
 
