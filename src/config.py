@@ -1,6 +1,7 @@
 """Configuration management for Alpha-X."""
 
 import os
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -11,9 +12,26 @@ load_dotenv()
 BASE_DIR = Path(__file__).parent.parent
 CREDENTIALS_DIR = BASE_DIR / "credentials"
 
+# Helper function to extract Sheet ID from URL
+def extract_sheet_id_from_url(url):
+    """Extract Google Sheet ID from a Google Sheets URL."""
+    if not url:
+        return None
+    
+    # Pattern: https://docs.google.com/spreadsheets/d/SHEET_ID/edit...
+    match = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', url)
+    if match:
+        return match.group(1)
+    return None
+
 # Google Sheets Configuration
+GOOGLE_SHEET_URL = os.getenv("GOOGLE_SHEET_URL")
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
-GOOGLE_SHEET_URL = os.getenv("GOOGLE_SHEET_URL")  # Optional: Full URL for reference
+
+# If GOOGLE_SHEET_ID is not set, try to extract it from GOOGLE_SHEET_URL
+if not GOOGLE_SHEET_ID and GOOGLE_SHEET_URL:
+    GOOGLE_SHEET_ID = extract_sheet_id_from_url(GOOGLE_SHEET_URL)
+
 GOOGLE_FORM_URL = os.getenv("GOOGLE_FORM_URL")  # Optional: Form URL for reference
 GOOGLE_CREDENTIALS_PATH = CREDENTIALS_DIR / "google_sheets_credentials.json"
 
@@ -54,7 +72,10 @@ def validate_config():
     errors = []
     
     if not GOOGLE_SHEET_ID:
-        errors.append("GOOGLE_SHEET_ID is not set")
+        if GOOGLE_SHEET_URL:
+            errors.append("GOOGLE_SHEET_ID could not be extracted from GOOGLE_SHEET_URL. Please check the URL format.")
+        else:
+            errors.append("GOOGLE_SHEET_ID or GOOGLE_SHEET_URL must be set")
     
     if not GOOGLE_CREDENTIALS_PATH.exists():
         errors.append(f"Google credentials file not found at {GOOGLE_CREDENTIALS_PATH}")
@@ -68,6 +89,7 @@ def validate_config():
     if errors:
         raise ValueError(f"Configuration errors:\n" + "\n".join(f"  - {e}" for e in errors))
     
+    print(f"✓ Using Google Sheet ID: {GOOGLE_SHEET_ID}")
     return True
 
 if __name__ == "__main__":
