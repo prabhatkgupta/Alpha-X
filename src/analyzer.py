@@ -21,7 +21,8 @@ class PersonalizationAnalyzer:
             'title': '🎯 CAREER GROWTH',
             'metrics': {},
             'insights': [],
-            'score': 0  # 0-100
+            'score': 0,  # 0-100
+            'has_data': False
         }
         
         if self.df.empty:
@@ -29,8 +30,9 @@ class PersonalizationAnalyzer:
         
         # Coding days
         if 'coding' in self.df.columns:
+            analysis['has_data'] = True
             coding_yes = (self.df['coding'] == 'Yes').sum()
-            coding_rate = coding_yes / self.total_days
+            coding_rate = coding_yes / self.total_days if self.total_days > 0 else 0
             analysis['metrics']['coding_days'] = f"{coding_yes}/{self.total_days} days"
             
             if coding_rate >= 0.85:
@@ -45,6 +47,7 @@ class PersonalizationAnalyzer:
         
         # Focus quality
         if 'focus' in self.df.columns:
+            analysis['has_data'] = True
             focus_counts = self.df['focus'].value_counts()
             sharp_days = focus_counts.get('Good, razor sharp', 0)
             multitask_days = focus_counts.get("I was multi-tasking, not good focus", 0)
@@ -61,6 +64,7 @@ class PersonalizationAnalyzer:
         
         # Career focus
         if 'career_focus' in self.df.columns:
+            analysis['has_data'] = True
             career_counts = self.df['career_focus'].value_counts()
             good_days = career_counts.get('Good, achieved my today\'s goal', 0)
             lazy_days = career_counts.get('Lazy, didn\'t wanted to work', 0)
@@ -73,6 +77,10 @@ class PersonalizationAnalyzer:
                 analysis['insights'].append("💡 Tip: Break goals into smaller tasks")
                 analysis['score'] += 10
         
+        # If no career data at all
+        if not analysis['has_data']:
+            analysis['insights'].append("ℹ️ No career tracking data found in your sheet")
+        
         return analysis
     
     def analyze_health(self) -> Dict[str, Any]:
@@ -82,7 +90,8 @@ class PersonalizationAnalyzer:
             'title': '💪 HEALTH & FITNESS',
             'metrics': {},
             'insights': [],
-            'score': 0
+            'score': 0,
+            'has_data': False
         }
         
         if self.df.empty:
@@ -90,8 +99,9 @@ class PersonalizationAnalyzer:
         
         # Protein intake
         if 'protein' in self.df.columns:
+            analysis['has_data'] = True
             protein_met = (self.df['protein'] == '>= 100g').sum()
-            protein_rate = protein_met / self.total_days
+            protein_rate = protein_met / self.total_days if self.total_days > 0 else 0
             analysis['metrics']['protein'] = f"{protein_met}/{self.total_days} days"
             
             if protein_rate >= 0.85:
@@ -107,8 +117,9 @@ class PersonalizationAnalyzer:
         
         # Workout
         if 'workout' in self.df.columns:
+            analysis['has_data'] = True
             workout_days = (self.df['workout'] == 'Yes').sum()
-            workout_rate = workout_days / self.total_days
+            workout_rate = workout_days / self.total_days if self.total_days > 0 else 0
             analysis['metrics']['workout'] = f"{workout_days}/{self.total_days} days"
             
             if workout_rate >= 0.7:
@@ -124,6 +135,7 @@ class PersonalizationAnalyzer:
         
         # Sleep analysis
         if 'sleep' in self.df.columns:
+            analysis['has_data'] = True
             # Extract numeric hours from sleep strings
             sleep_hours = []
             for val in self.df['sleep']:
@@ -153,6 +165,7 @@ class PersonalizationAnalyzer:
         
         # Sunshine
         if 'sunshine' in self.df.columns:
+            analysis['has_data'] = True
             sunshine_days = (self.df['sunshine'] == 'Yes').sum()
             if sunshine_days >= 5:
                 analysis['insights'].append(f"✅ Sunshine: {sunshine_days}/{self.total_days} days - Good!")
@@ -160,6 +173,10 @@ class PersonalizationAnalyzer:
             else:
                 analysis['insights'].append(f"⚠️ Sunshine: {sunshine_days}/{self.total_days} days")
                 analysis['insights'].append("💡 Tip: Morning sun boosts vitamin D & mood")
+        
+        # If no health data at all
+        if not analysis['has_data']:
+            analysis['insights'].append("ℹ️ No health/fitness tracking data found in your sheet")
         
         return analysis
     
@@ -170,11 +187,15 @@ class PersonalizationAnalyzer:
             'title': '❤️ MARRIAGE',
             'metrics': {},
             'insights': [],
-            'score': 0
+            'score': 0,
+            'has_data': False
         }
         
         if self.df.empty or 'marriage' not in self.df.columns:
+            analysis['insights'].append("ℹ️ Not tracking marriage/relationship data")
             return analysis
+        
+        analysis['has_data'] = True
         
         marriage_counts = self.df['marriage'].value_counts()
         good_days = marriage_counts.get('Good', 0)
@@ -272,12 +293,15 @@ class PersonalizationAnalyzer:
         marriage = self.analyze_marriage()
         overall = self.analyze_overall_performance()
         
-        # Build report
+        # Build report - only include sections with data
+        tracked_goals = []
         for section in [career, health, marriage]:
-            report_lines.append(section['title'])
-            for insight in section['insights']:
-                report_lines.append(insight)
-            report_lines.append("")
+            if section.get('has_data', False) or section['insights']:
+                tracked_goals.append(section['title'])
+                report_lines.append(section['title'])
+                for insight in section['insights']:
+                    report_lines.append(insight)
+                report_lines.append("")
         
         # Overall section
         report_lines.append(overall['title'])
@@ -285,15 +309,22 @@ class PersonalizationAnalyzer:
             report_lines.append(insight)
         report_lines.append("")
         
-        # Calculate overall score
-        total_score = (career['score'] + health['score'] + marriage['score']) / 3
+        # Calculate overall score (only from tracked areas)
+        tracked_sections = [s for s in [career, health, marriage] if s.get('has_data', False)]
+        if tracked_sections:
+            total_score = sum(s['score'] for s in tracked_sections) / len(tracked_sections)
+            
+            if total_score >= 70:
+                report_lines.append("🎉 Excellent week overall! Keep it up! 💪")
+            elif total_score >= 50:
+                report_lines.append("👍 Good week! Room for improvement 💪")
+            else:
+                report_lines.append("⚠️ Tough week. Focus on one thing at a time 💪")
         
-        if total_score >= 70:
-            report_lines.append("🎉 Excellent week overall! Keep it up! 💪")
-        elif total_score >= 50:
-            report_lines.append("👍 Good week! Room for improvement 💪")
-        else:
-            report_lines.append("⚠️ Tough week. Focus on one thing at a time 💪")
+        # Add tracking summary
+        if tracked_goals:
+            report_lines.append("")
+            report_lines.append(f"📋 Currently tracking: {len(tracked_goals)} goal(s)")
         
         return "\n".join(report_lines)
     

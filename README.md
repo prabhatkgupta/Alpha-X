@@ -18,9 +18,11 @@
 
 - 📊 Automatically fetches data from Google Forms responses
 - 🎯 Tracks your 4 main goals: Career, Health, Marriage, Investments
+- 🔧 **Flexible tracking** - works even if you remove columns (skip goals you don't track)
 - 📱 Sends weekly insights via WhatsApp
 - 🤖 Intelligent analysis and recommendations
 - ⏰ Automated weekly reports every Sunday
+- 📈 Detailed monthly summaries with trend analysis
 
 ## Goals Priority
 
@@ -28,6 +30,8 @@
 2. **Health & Fitness** - Protein intake, workouts, sleep, sunshine
 3. **Marriage** - Relationship goals tracking
 4. **Investments** - (To be tracked)
+
+**💡 Note**: All goals are optional! The system automatically adapts to whatever you track. Remove any columns from your form and the reports still work. See [CUSTOMIZATION.md](CUSTOMIZATION.md) for details.
 
 ## Setup
 
@@ -220,6 +224,15 @@ flake8 src/
 black src/
 ```
 
+## Customization
+
+Want to track only certain goals? No problem!
+
+- **Remove columns** from your Google Form - the system adapts automatically
+- **Add custom goals** - see [CUSTOMIZATION.md](CUSTOMIZATION.md)
+- **Rename sections** - update the config to match your needs
+- The system **never crashes** due to missing columns
+
 ## Troubleshooting
 
 ### Google Sheets Access Denied
@@ -238,6 +251,12 @@ black src/
 - Verify the GOOGLE_SHEET_ID is correct
 - Check that your sheet has data in the expected format
 - Ensure the sheet name/tab is correct in the code
+
+### "Not tracking X data" Messages
+
+- This is normal if you removed columns from your form
+- The system skips sections with no data automatically
+- To start tracking, add the questions back to your form
 
 ## License
 

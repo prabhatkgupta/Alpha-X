@@ -130,10 +130,11 @@ def generate_detailed_monthly_summary(df):
     ]
     
     # === CAREER GROWTH SECTION ===
-    report_lines.append("🎯 CAREER GROWTH (Priority #1)")
-    report_lines.append("-" * 60)
-    
     career = analyzer.analyze_career()
+    if career.get('has_data', False):
+        report_lines.append("🎯 CAREER GROWTH (Priority #1)")
+        report_lines.append("-" * 60)
+    
     if 'coding' in df.columns:
         coding_yes = (df['coding'] == 'Yes').sum()
         coding_rate = (coding_yes / days_tracked) * 100
@@ -171,13 +172,14 @@ def generate_detailed_monthly_summary(df):
         lazy_days = (df['career_focus'] == 'Lazy, didn\'t wanted to work').sum()
         report_lines.append(f"🏆 Goals: Achieved on {goal_achieved} days, {lazy_days} lazy days")
     
-    report_lines.append("")
+    if career.get('has_data', False):
+        report_lines.append("")
     
     # === HEALTH & FITNESS SECTION ===
-    report_lines.append("💪 HEALTH & FITNESS (Priority #2)")
-    report_lines.append("-" * 60)
-    
     health = analyzer.analyze_health()
+    if health.get('has_data', False):
+        report_lines.append("💪 HEALTH & FITNESS (Priority #2)")
+        report_lines.append("-" * 60)
     
     if 'protein' in df.columns:
         protein_met = (df['protein'] == '>= 100g').sum()
@@ -223,11 +225,14 @@ def generate_detailed_monthly_summary(df):
         sunshine_rate = (sunshine_days / days_tracked) * 100
         report_lines.append(f"☀️ Sunshine: {sunshine_days}/{days_tracked} days ({sunshine_rate:.0f}%)")
     
-    report_lines.append("")
+    if health.get('has_data', False):
+        report_lines.append("")
     
     # === MARRIAGE SECTION ===
-    report_lines.append("❤️ MARRIAGE (Priority #3)")
-    report_lines.append("-" * 60)
+    marriage = analyzer.analyze_marriage()
+    if marriage.get('has_data', False):
+        report_lines.append("❤️ MARRIAGE (Priority #3)")
+        report_lines.append("-" * 60)
     
     if 'marriage' in df.columns:
         good_days = (df['marriage'] == 'Good').sum()
@@ -244,7 +249,8 @@ def generate_detailed_monthly_summary(df):
         else:
             report_lines.append("⚠️ Relationship needs more attention")
     
-    report_lines.append("")
+    if marriage.get('has_data', False):
+        report_lines.append("")
     
     # === OVERALL PERFORMANCE ===
     report_lines.append("📈 OVERALL MONTHLY PERFORMANCE")
@@ -319,8 +325,23 @@ def generate_detailed_monthly_summary(df):
             report_lines.append(f"   {improvement}")
         report_lines.append("")
     
-    # Overall score
-    total_score = (career.get('score', 0) + health.get('score', 0)) / 2
+    # Overall score - only from tracked areas
+    tracked_sections = []
+    if career.get('has_data', False):
+        tracked_sections.append(career)
+    if health.get('has_data', False):
+        tracked_sections.append(health)
+    if marriage.get('has_data', False):
+        tracked_sections.append(marriage)
+    
+    if tracked_sections:
+        total_score = sum(s.get('score', 0) for s in tracked_sections) / len(tracked_sections)
+    else:
+        total_score = 0
+    
+    # Add tracking summary
+    report_lines.append(f"📋 Tracking {len(tracked_sections)} goal area(s) this month")
+    report_lines.append("")
     
     if total_score >= 70:
         report_lines.append("🎉 EXCELLENT MONTH! Keep up the momentum!")
