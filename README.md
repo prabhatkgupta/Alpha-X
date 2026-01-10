@@ -88,7 +88,9 @@ Create a `.env` file in the root directory:
 
 ```env
 # Google Sheets Configuration
-GOOGLE_SHEET_ID=your_google_sheet_id_here
+GOOGLE_FORM_URL=your_google_form_url
+GOOGLE_SHEET_URL=your_google_sheet_responses_file
+
 
 # Twilio WhatsApp Configuration
 TWILIO_ACCOUNT_SID=your_twilio_account_sid
