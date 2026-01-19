@@ -2,7 +2,7 @@
 
 # 🎯 Alpha-X
 
-### Personal Tracking & Insights System
+### Time Tracking & Optimization System
 
 **A smart personal tracking system that analyzes your daily activities and sends weekly insights to WhatsApp**
 
