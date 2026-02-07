@@ -1,12 +1,27 @@
-# Scheduling Guide - Weekly Automated Reports
+# Scheduling Guide - Automated Weekly & Monthly Reports
 
-This guide explains how to set up automatic weekly summaries that run every Sunday at 1 PM.
+This guide explains how to run **weekly** (every Sunday) and **monthly** (1st of each month) summaries automatically.
 
 ## 📅 What Gets Scheduled
 
-- **Script**: `summarize_last_week.py`
-- **Frequency**: Every Sunday at 1:00 PM
-- **Action**: Analyzes last 7 entries from your sheet and sends insights to WhatsApp
+| Script | When | Action |
+|--------|------|--------|
+| `summarize_last_week.py` | **Every Sunday** (e.g. 1:00 PM) | Last 7 days from sheet → WhatsApp |
+| `summarize_last_month.py` | **1st of every month** (e.g. 2:00 PM) | Last 30 days summary → WhatsApp |
+
+---
+
+## 🎯 Where to Deploy (Recommended Options)
+
+| Option | Best for | Weekly | Monthly | Cost |
+|--------|----------|--------|---------|------|
+| **GitHub Actions** | Cloud, no machine needed | ✅ | ✅ | Free (public repos) |
+| **Cron (Mac/Linux)** | Your own computer always on | ✅ | ✅ | Free |
+| **Windows Task Scheduler** | Windows PC always on | ✅ | ✅ | Free |
+| **Render Cron** | Managed cloud cron | ✅ | ✅ | Free tier available |
+| **Railway / Fly.io** | Cron + optional app | ✅ | ✅ | Free tier |
+
+**Recommendation:** Use **GitHub Actions** so reports run even when your laptop is off. Workflows are already in `.github/workflows/` (see Method 4 below).
 
 ---
 
@@ -65,14 +80,17 @@ python src/summarize_last_week.py
 crontab -e
 ```
 
-### Step 3: Add This Line
+### Step 3: Add These Lines
 
 ```cron
-# Run every Sunday at 1 PM
-0 13 * * 0 cd /Users/prabhatgupta/Downloads/repos/Alpha-X && /Users/prabhatgupta/Downloads/repos/Alpha-X/venv/bin/python src/summarize_last_week.py >> logs/cron.log 2>&1
+# Weekly: every Sunday at 1 PM
+0 13 * * 0 cd /path/to/Alpha-X && /path/to/Alpha-X/venv/bin/python src/summarize_last_week.py >> logs/cron.log 2>&1
+
+# Monthly: 1st of every month at 2 PM
+0 14 1 * * cd /path/to/Alpha-X && /path/to/Alpha-X/venv/bin/python src/summarize_last_month.py >> logs/cron_monthly.log 2>&1
 ```
 
-**Note**: Update the path to match your actual virtual environment location.
+Replace `/path/to/Alpha-X` and `/path/to/Alpha-X/venv` with your actual project and venv paths.
 
 ### Step 4: Save and Verify
 
@@ -142,52 +160,18 @@ crontab -l
 
 ---
 
-## ☁️ Method 4: GitHub Actions (Cloud-Based)
+## ☁️ Method 4: GitHub Actions (Cloud-Based) — Recommended
 
-Run the scheduler in the cloud using GitHub Actions (no local machine needed).
+Runs in the cloud; no need to keep your computer on. Two workflows are included:
 
-### Step 1: Create Workflow File
+- **`.github/workflows/weekly-summary.yml`** — every Sunday at 1:00 PM UTC  
+- **`.github/workflows/monthly-summary.yml`** — 1st of every month at 2:00 PM UTC  
 
-Create `.github/workflows/weekly-summary.yml`:
+You can change the time in each file (e.g. `cron: '0 13 * * 0'` = minute 0, hour 13 = 1 PM UTC). Both support **Run workflow** from the Actions tab for manual runs.
 
-```yaml
-name: Weekly Summary Report
+### Step 1: Workflows Already Created
 
-on:
-  schedule:
-    # Runs every Sunday at 1 PM UTC (adjust timezone as needed)
-    - cron: '0 13 * * 0'
-  workflow_dispatch:  # Allows manual trigger
-
-jobs:
-  send-summary:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-      
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-      
-      - name: Run weekly summary
-        env:
-          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
-          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
-          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
-          YOUR_WHATSAPP_NUMBER: ${{ secrets.YOUR_WHATSAPP_NUMBER }}
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
-        run: |
-          echo "$GOOGLE_CREDENTIALS" > credentials/google_sheets_credentials.json
-          python src/summarize_last_week.py
-```
+No need to create files; they are in the repo. After cloning/pushing, go to the **Actions** tab to see "Weekly Summary (Sunday)" and "Monthly Summary (1st of Month)".
 
 ### Step 2: Add Secrets to GitHub
 
@@ -311,14 +295,14 @@ timedatectl  # Linux only
 
 ## 🎯 Recommended Setup
 
-**For Personal Use (Local Machine):**
-- Use **Method 2 (Cron)** for reliability and low resource usage
+**For automated runs without keeping your PC on:**
+- Use **Method 4 (GitHub Actions)** — weekly and monthly workflows run in the cloud for free.
 
-**For Cloud/Always-On:**
-- Use **Method 4 (GitHub Actions)** for free cloud execution
+**For personal use (Mac/Linux always on):**
+- Use **Method 2 (Cron)** — add both weekly and monthly cron lines above.
 
-**For Testing:**
-- Use **Method 1 (Python Scheduler)** to test before setting up cron
+**For testing:**
+- Use **Method 1 (Python Scheduler)** or run scripts manually before enabling cron/GitHub Actions.
 
 ---
 
