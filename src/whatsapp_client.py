@@ -79,6 +79,27 @@ class WhatsAppClient:
 
         return self.send_message(message)
 
+    
+    def send_monthly_report(self, report: str) -> bool:
+        """
+        Send Monthly report via WhatsApp.
+
+        Args:
+            report: The monthly report text
+
+        Returns:
+            True if successful, False otherwise
+        """
+        # Add header
+        message = f"🎯 Hey, Your Monthly Insights\n\n{report}"
+
+        # Check message length (WhatsApp has 1600 char limit via Twilio)
+        if len(message) > 1600:
+            print("⚠️ Message too long, truncating...")
+            message = message[:1580] + "\n\n... (truncated)"
+
+        return self.send_message(message)
+
     def test_connection(self) -> bool:
         """Test connection by sending a test message."""
         test_msg = "🤖 Alpha-X Test\n\nIf you received this, setup is working!"

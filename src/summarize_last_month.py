@@ -441,7 +441,7 @@ def send_to_whatsapp(report):
 
         return success
     else:
-        return whatsapp_client.send_weekly_report(report)
+        return whatsapp_client.send_monthly_report(report)
 
 
 def main():
