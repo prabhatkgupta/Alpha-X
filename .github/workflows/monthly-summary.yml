@@ -1,0 +1,40 @@
+# Runs on the 1st of every month – summarizes last 30 days and sends to WhatsApp
+name: Monthly Summary (1st of Month)
+
+on:
+  schedule:
+    # 1st of every month at 2:00 PM UTC (adjust for your timezone)
+    - cron: '0 14 1 * *'
+  workflow_dispatch:
+
+jobs:
+  monthly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create credentials file
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: |
+          mkdir -p credentials
+          echo "$GOOGLE_CREDENTIALS" > credentials/google_sheets_credentials.json
+
+      - name: Run monthly summary
+        env:
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_URL }}
+          GOOGLE_FORM_URL: ${{ secrets.GOOGLE_FORM_URL }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
+          YOUR_WHATSAPP_NUMBER: ${{ secrets.YOUR_WHATSAPP_NUMBER }}
+        run: python src/summarize_last_month.py
