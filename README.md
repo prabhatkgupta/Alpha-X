@@ -4,11 +4,12 @@
 
 ### Time Tracking & Personal Optimization System
 
-**A smart personal tracking system that analyzes your daily activities and sends weekly insights to WhatsApp**
+**A smart personal tracking system that analyzes your daily activities and sends weekly insights to WhatsApp or Telegram**
 
 [![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![WhatsApp](https://img.shields.io/badge/WhatsApp-25D366?style=flat&logo=whatsapp&logoColor=white)](https://www.twilio.com/docs/whatsapp)
+[![Telegram](https://img.shields.io/badge/Telegram-26A5E4?style=flat&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api)
 
 </div>
 
