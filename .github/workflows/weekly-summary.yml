@@ -1,4 +1,4 @@
-# Runs every Sunday – summarizes last 7 days and sends to WhatsApp
+# Runs every Sunday – summarizes last 7 days and sends via NOTIFY_CHANNEL
 name: Weekly Summary (Sunday)
 
 on:
@@ -32,8 +32,11 @@ jobs:
         env:
           GOOGLE_SHEET_URL: ${{ secrets.GOOGLE_SHEET_URL }}
           GOOGLE_FORM_URL: ${{ secrets.GOOGLE_FORM_URL }}
+          NOTIFY_CHANNEL: ${{ secrets.NOTIFY_CHANNEL }}
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
           YOUR_WHATSAPP_NUMBER: ${{ secrets.YOUR_WHATSAPP_NUMBER }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python src/summarize_last_week.py

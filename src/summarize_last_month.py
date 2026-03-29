@@ -1,4 +1,4 @@
-"""Generate detailed monthly summary and send to WhatsApp."""
+"""Generate detailed monthly summary and send via WhatsApp or Telegram (.env: NOTIFY_CHANNEL)."""
 
 import sys
 from datetime import datetime, timedelta
@@ -9,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from sheets_client import SheetsClient
 from analyzer import PersonalizationAnalyzer
-from whatsapp_client import WhatsAppClient
 import config
 import pandas as pd
 
@@ -402,24 +401,27 @@ def generate_detailed_monthly_summary(df):
     return "\n".join(report_lines)
 
 
-def send_to_whatsapp(report):
-    """Send the monthly summary to WhatsApp."""
-    print("\n📱 Sending monthly report to WhatsApp...")
+def send_notification(report):
+    """Send the monthly summary via NOTIFY_CHANNEL (whatsapp or telegram)."""
+    label = "Telegram" if config.NOTIFY_CHANNEL == "telegram" else "WhatsApp"
+    print(f"\n📱 Sending monthly report to {label}...")
 
-    whatsapp_client = WhatsAppClient()
+    client = config.get_notification_client()
 
-    # Monthly reports might be longer, so we might need to split
-    if len(report) > 1600:
+    # Per-message limits: Twilio WhatsApp ~1600; Telegram 4096
+    split_threshold = 4000 if config.NOTIFY_CHANNEL == "telegram" else 1600
+    max_body = 3900 if config.NOTIFY_CHANNEL == "telegram" else 1500
+
+    if len(report) > split_threshold:
         print("⚠️ Report is long, sending in parts...")
 
-        # Split into parts
         parts = []
         lines = report.split("\n")
         current_part = []
         current_length = 0
 
         for line in lines:
-            if current_length + len(line) + 1 > 1500:  # Leave margin
+            if current_length + len(line) + 1 > max_body:
                 parts.append("\n".join(current_part))
                 current_part = [line]
                 current_length = len(line)
@@ -430,18 +432,16 @@ def send_to_whatsapp(report):
         if current_part:
             parts.append("\n".join(current_part))
 
-        # Send parts
         success = True
         for i, part in enumerate(parts, 1):
             print(f"Sending part {i}/{len(parts)}...")
             message = f"📊 Monthly Report (Part {i}/{len(parts)})\n\n{part}"
-            if not whatsapp_client.send_message(message):
+            if not client.send_message(message):
                 success = False
                 break
 
         return success
-    else:
-        return whatsapp_client.send_monthly_report(report)
+    return client.send_monthly_report(report)
 
 
 def main():
@@ -476,14 +476,15 @@ def main():
         print(report)
         print("=" * 70)
 
-        # Step 3: Send to WhatsApp
-        success = send_to_whatsapp(report)
+        # Step 3: Send notification
+        success = send_notification(report)
 
         if success:
-            print("\n✨ Done! Check your WhatsApp for the monthly summary.")
+            dest = "Telegram" if config.NOTIFY_CHANNEL == "telegram" else "WhatsApp"
+            print(f"\n✨ Done! Check {dest} for the monthly summary.")
         else:
-            print("\n⚠️ Summary generated but failed to send to WhatsApp.")
-            print("Check your Twilio credentials and try again.")
+            print("\n⚠️ Summary generated but failed to send the notification.")
+            print("Check NOTIFY_CHANNEL and Twilio or Telegram settings in .env.")
 
     except Exception as e:
         print(f"\n❌ Error: {e}")

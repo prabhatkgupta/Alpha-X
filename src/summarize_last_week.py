@@ -1,4 +1,4 @@
-"""Summarize last 7 days of data and send to WhatsApp."""
+"""Summarize last 7 days of data and send via WhatsApp or Telegram (.env: NOTIFY_CHANNEL)."""
 
 import sys
 from datetime import datetime, timedelta
@@ -9,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from sheets_client import SheetsClient
 from analyzer import PersonalizationAnalyzer
-from whatsapp_client import WhatsAppClient
 import config
 
 
@@ -62,23 +61,23 @@ def generate_summary(df):
     return report
 
 
-def send_to_whatsapp(report):
-    """Send the summary report to WhatsApp."""
-    print("\n📱 Sending report to WhatsApp...")
+def send_notification(report):
+    """Send the weekly summary via NOTIFY_CHANNEL (whatsapp or telegram)."""
+    label = "Telegram" if config.NOTIFY_CHANNEL == "telegram" else "WhatsApp"
+    print(f"\n📱 Sending report to {label}...")
 
-    whatsapp_client = WhatsAppClient()
-    success = whatsapp_client.send_weekly_report(report)
+    client = config.get_notification_client()
+    success = client.send_weekly_report(report)
 
     if success:
-        print("✅ Report sent successfully to WhatsApp!")
+        print(f"✅ Report sent successfully ({label})!")
         return True
-    else:
-        print("❌ Failed to send report to WhatsApp")
-        return False
+    print(f"❌ Failed to send report ({label})")
+    return False
 
 
 def main():
-    """Main function to summarize last 7 days and send to WhatsApp."""
+    """Main function to summarize last 7 days and send the notification."""
     print("=" * 70)
     print("🎯 Alpha-X - Last 7 Days Summary")
     print("=" * 70)
@@ -109,14 +108,15 @@ def main():
         print(report)
         print("=" * 70)
 
-        # Step 3: Send to WhatsApp
-        success = send_to_whatsapp(report)
+        # Step 3: Send notification
+        success = send_notification(report)
 
         if success:
-            print("\n✨ Done! Check your WhatsApp for the summary.")
+            dest = "Telegram" if config.NOTIFY_CHANNEL == "telegram" else "WhatsApp"
+            print(f"\n✨ Done! Check {dest} for the summary.")
         else:
-            print("\n⚠️ Summary generated but failed to send to WhatsApp.")
-            print("Check your Twilio credentials and try again.")
+            print("\n⚠️ Summary generated but failed to send the notification.")
+            print("Check NOTIFY_CHANNEL and Twilio or Telegram settings in .env.")
 
     except Exception as e:
         print(f"\n❌ Error: {e}")
