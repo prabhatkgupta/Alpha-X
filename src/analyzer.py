@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Tuple, Optional
 from collections import Counter
 
 # Visible section breaks in Telegram/WhatsApp reports
-SECTION_LINE = "━━━━━━━━━━━━━━━━━━━━━━"
+SECTION_LINE = "━━━━━━━━━━━━━━━━━━━"
 
 
 def _sleep_hours_from_cell(val) -> Optional[int]:
