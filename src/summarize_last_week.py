@@ -1,8 +1,10 @@
-"""Summarize last 7 days of data and send via WhatsApp or Telegram (.env: NOTIFY_CHANNEL)."""
+"""Summarize last 7 calendar days of data and send via WhatsApp or Telegram (.env: NOTIFY_CHANNEL)."""
 
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
+
+import pandas as pd
 
 # Add src to path if needed
 sys.path.insert(0, str(Path(__file__).parent))
@@ -13,26 +15,45 @@ import config
 
 
 def get_last_7_days_data():
-    """Fetch the last 7 rows from the Google Sheet."""
+    """Fetch rows in the rolling 7-day window ending at min(today, latest sheet date)."""
     print("📊 Fetching data from Google Sheets...")
 
     sheets_client = SheetsClient()
     sheets_client.connect()
 
-    # Get all data
     df = sheets_client.get_all_data()
 
     if df.empty:
         print("❌ No data found in the sheet")
         return None
 
-    # Get last 7 rows
-    last_7_days = df.tail(7).copy()
+    if "timestamp" not in df.columns:
+        last_7_days = df.tail(7).copy()
+        print(f"✅ Found {len(last_7_days)} entries (no timestamp; using last 7 rows)")
+        return last_7_days
+
+    df = df.copy()
+    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+    df = df.dropna(subset=["timestamp"])
+    if df.empty:
+        print("❌ No rows with valid timestamps")
+        return None
+
+    end_ts = min(pd.Timestamp.now(), df["timestamp"].max())
+    end = end_ts.normalize()
+    start = end - pd.Timedelta(days=6)
+    mask = (df["timestamp"].dt.normalize() >= start) & (
+        df["timestamp"].dt.normalize() <= end
+    )
+    last_7_days = df.loc[mask].sort_values("timestamp").copy()
+
+    if last_7_days.empty:
+        last_7_days = df.tail(7).copy()
+        print("⚠️ No rows in last 7 calendar days; using last 7 sheet rows")
 
     print(f"✅ Found {len(last_7_days)} entries for analysis")
 
-    # Show date range
-    if "timestamp" in last_7_days.columns:
+    if len(last_7_days) > 0:
         start_date = last_7_days["timestamp"].min()
         end_date = last_7_days["timestamp"].max()
         print(f"📅 Data range: {start_date.date()} to {end_date.date()}")
@@ -52,11 +73,10 @@ def generate_summary(df):
     # Get focus areas
     focus_areas = analyzer.get_focus_areas()
 
-    # Add focus areas to report if any
     if focus_areas:
-        report += "\n\n🎯 Focus Areas for Next Week:"
+        report += "\n\n━━━━━━━━━━━━━━━━━━━━━━\n🎯 Next up\n━━━━━━━━━━━━━━━━━━━━━━"
         for i, area in enumerate(focus_areas, 1):
-            report += f"\n   {i}. {area}"
+            report += f"\n{i}. {area}"
 
     return report
 
