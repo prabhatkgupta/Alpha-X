@@ -31,8 +31,7 @@ HAPPY_YES = "Yes, I am happy"
 HAPPY_NEUTRAL = "Slightly Neutral, could do better"
 HAPPY_BAD = "No, I performed bad"
 
-# "Marriage goals ?" (current form: Okayish | Not good; legacy: Good)
-MARRIAGE_GOOD = "Good"
+# "Marriage goals ?" — Okayish | Not good
 MARRIAGE_OKAYISH = "Okayish"
 MARRIAGE_NOT_GOOD = "Not good"
 
@@ -285,35 +284,31 @@ class PersonalizationAnalyzer:
         analysis["has_data"] = True
 
         s = self.df["marriage"].astype(str).str.strip()
-        good_days = int((s == MARRIAGE_GOOD).sum())
         okayish_days = int((s == MARRIAGE_OKAYISH).sum())
         not_good_days = int((s == MARRIAGE_NOT_GOOD).sum())
 
         analysis["metrics"][
             "status"
-        ] = f"Good: {good_days}, Okayish: {okayish_days}, Not good: {not_good_days}"
+        ] = f"Okayish: {okayish_days}, Not good: {not_good_days}"
 
         n = self.total_days
-        # Current form is Okayish | Not good only; "good enough" = Good + Okayish
-        positive_days = good_days + okayish_days
-        positive_rate = positive_days / n if n else 0.0
+        okayish_rate = okayish_days / n if n else 0.0
         not_good_rate = not_good_days / n if n else 0.0
 
-        if positive_rate >= 0.7:
+        if okayish_rate >= 0.7:
             analysis["insights"].append(
-                f"✅ Marriage: {positive_days}/{n} ok or better (okayish + good)"
+                f"✅ Marriage: {okayish_days}/{n} okayish days"
             )
             analysis["score"] = 100
-        elif positive_rate >= 0.4 or not_good_rate < 0.5:
+        elif okayish_rate >= 0.4 or not_good_rate < 0.5:
             analysis["insights"].append(
-                f"⚠️ Marriage: {okayish_days} okayish, {not_good_days} not good"
-                + (f", {good_days} good" if good_days else "")
+                f"⚠️ Marriage: {okayish_days} okayish · {not_good_days} not good"
             )
             analysis["insights"].append("💡 Tip: Schedule quality time together")
             analysis["score"] = 60
         else:
             analysis["insights"].append(
-                f"⚠️ Needs attention: {not_good_days} not good days"
+                f"⚠️ Needs attention: {not_good_days}/{n} not good days"
             )
             analysis["insights"].append(
                 "💡 Tip: Have an open conversation about expectations"
@@ -475,10 +470,9 @@ class PersonalizationAnalyzer:
             )
         if "marriage" in df.columns:
             ms = df["marriage"].astype(str).str.strip()
-            g = int((ms == MARRIAGE_GOOD).sum())
             ok = int((ms == MARRIAGE_OKAYISH).sum())
             bad = int((ms == MARRIAGE_NOT_GOOD).sum())
-            lines.append(f"• Marriage: good {g} · okayish {ok} · not good {bad}")
+            lines.append(f"• Marriage: okayish {ok}/{n} · not good {bad}/{n}")
         if "performance" in df.columns:
             b, same, w = _performance_counts(df)
             lines.append(f"• vs yesterday: better {b} · same {same} · worse {w}")
@@ -626,7 +620,7 @@ if __name__ == "__main__":
         "protein": [">= 100g"] * 6 + ["< 100g"],
         "workout": ["Yes"] * 5 + ["No"] * 2,
         "sleep": ["7 hrs", "6 hrs", "7 hrs", "8 hrs", "6 hrs", "7 hrs", "6 hrs"],
-        "marriage": ["Good", "Okayish", "Good", "Okayish", "Good", "Good", "Okayish"],
+        "marriage": ["Okayish", "Okayish", "Not good", "Okayish", "Okayish", "Okayish", "Not good"],
         "happiness": ["Yes, I am happy"] * 5
         + ["Slightly Neutral, could do better"] * 2,
     }

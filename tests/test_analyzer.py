@@ -24,7 +24,7 @@ def sample_data():
         "protein": [">= 100g"] * 6 + ["< 100g"],
         "workout": ["Yes"] * 5 + ["No"] * 2,
         "sleep": ["7 hrs", "6 hrs", "7 hrs", "8 hrs", "6 hrs", "7 hrs", "6 hrs"],
-        "marriage": ["Good", "Okayish", "Good", "Okayish", "Good", "Good", "Okayish"],
+        "marriage": ["Okayish", "Okayish", "Not good", "Okayish", "Okayish", "Okayish", "Not good"],
         "happiness": ["Yes, I am happy"] * 5
         + ["Slightly Neutral, could do better"] * 2,
         "performance": ["Yes, better than yesterday"] * 4 + ["Same as yesterday"] * 3,
@@ -79,8 +79,8 @@ def test_marriage_analysis(sample_data):
     assert "score" in marriage
 
 
-def test_marriage_okayish_only_form():
-    """Form with only Okayish | Not good still scores and has_data."""
+def test_marriage_two_state_form():
+    """Marriage question: only Okayish | Not good."""
     df = pd.DataFrame(
         {
             "timestamp": pd.date_range("2026-01-05", periods=5),
