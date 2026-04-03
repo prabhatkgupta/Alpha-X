@@ -10,7 +10,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent))
 
 from sheets_client import SheetsClient
-from analyzer import PersonalizationAnalyzer
+from analyzer import PersonalizationAnalyzer, SECTION_LINE
 import config
 
 
@@ -74,7 +74,7 @@ def generate_summary(df):
     focus_areas = analyzer.get_focus_areas()
 
     if focus_areas:
-        report += "\n\n━━━━━━━━━━━━━━━━━━━━━━\n🎯 Next up\n━━━━━━━━━━━━━━━━━━━━━━"
+        report += f"\n\n{SECTION_LINE}\n🎯 Next up\n{SECTION_LINE}"
         for i, area in enumerate(focus_areas, 1):
             report += f"\n{i}. {area}"
 
