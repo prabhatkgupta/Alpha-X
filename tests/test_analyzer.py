@@ -31,6 +31,7 @@ def sample_data():
         "career_focus": ["Good, achieved my today's goal"] * 5
         + ["Neutral, gave my best"] * 2,
         "sunshine": ["Yes"] * 6 + ["No"],
+        "chewing_gum": ["Yes"] * 5 + ["No"] * 2,
     }
     return pd.DataFrame(data)
 
@@ -93,9 +94,28 @@ def test_generate_weekly_report(sample_data):
 
     assert isinstance(report, str)
     assert len(report) > 0
-    assert "📊 Weekly Report" in report
-    assert "CAREER GROWTH" in report
-    assert "HEALTH & FITNESS" in report
+    assert "📊 Weekly" in report
+    assert "Days logged:" in report
+    assert "/7" in report
+    assert "Career" in report
+    assert "Health" in report
+    assert "Focus" in report
+    assert "Happy & misc" in report
+
+
+def test_days_logged_ratio_partial_week():
+    """Distinct days with entries vs 7-day period."""
+    df = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(
+                ["2026-01-05", "2026-01-06", "2026-01-07", "2026-01-08"]
+            ),
+            "coding": ["Yes", "No", "Yes", "Yes"],
+        }
+    )
+    logged, period = PersonalizationAnalyzer.days_logged_ratio(df, 7)
+    assert period == 7
+    assert logged == 4
 
 
 def test_focus_areas(sample_data):
@@ -104,7 +124,7 @@ def test_focus_areas(sample_data):
     focus_areas = analyzer.get_focus_areas()
 
     assert isinstance(focus_areas, list)
-    assert len(focus_areas) <= 3
+    assert len(focus_areas) <= 4
 
 
 def test_empty_dataframe():
