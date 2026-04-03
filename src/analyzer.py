@@ -434,7 +434,8 @@ class PersonalizationAnalyzer:
         lines.append(title)
         lines.append(SECTION_LINE)
         lines.extend(body)
-        lines.append("")
+        # Extra blank line between sections (join inserts \n between each entry)
+        lines.extend(["", ""])
 
     def _overall_one_liner(self) -> str:
         career = self.analyze_career()
