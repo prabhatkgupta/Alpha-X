@@ -9,12 +9,49 @@ from collections import Counter
 # Visible section breaks in Telegram/WhatsApp reports
 SECTION_LINE = "━━━━━━━━━━━━━━━━━━━"
 
+# Google Form "Day Overview ?" — must match linked sheet values exactly
+DAY_OVERVIEW_EASY = "Did easy work"
+DAY_OVERVIEW_HARD_ENJOYED = "Did hard work - enjoyed"
+DAY_OVERVIEW_HARD_BURNED = "Did hard work - burned out"
+DAY_OVERVIEW_PROCRASTINATED = "Procrastinated"
+
+# "You did better overall ?"
+PERFORMANCE_BETTER = "Yes, better than yesterday"
+PERFORMANCE_SAME = "Same as yesterday"
+PERFORMANCE_WORST = "Worst than yesterday"  # Form spelling
+PERFORMANCE_WORSE_ALT = "Worse than yesterday"  # common typo / alt
+
+# "Focused on Career ?"
+CAREER_GOOD = "Good, achieved my today's goal"
+CAREER_NEUTRAL = "Neutral, gave my best"
+CAREER_LAZY = "Lazy, didn't wanted to work"
+
+# "Are you happy today with your performance ?"
+HAPPY_YES = "Yes, I am happy"
+HAPPY_NEUTRAL = "Slightly Neutral, could do better"
+HAPPY_BAD = "No, I performed bad"
+
+# "Marriage goals ?" — Okayish | Not good
+MARRIAGE_OKAYISH = "Okayish"
+MARRIAGE_NOT_GOOD = "Not good"
+
 
 def _sleep_hours_from_cell(val) -> Optional[int]:
     if not isinstance(val, str):
         return None
     m = re.search(r"(\d+)", val)
     return int(m.group(1)) if m else None
+
+
+def _performance_counts(df: pd.DataFrame) -> Tuple[int, int, int]:
+    """Counts for vs-yesterday question; strips cell text for robust matching."""
+    if "performance" not in df.columns:
+        return (0, 0, 0)
+    s = df["performance"].astype(str).str.strip()
+    better = int((s == PERFORMANCE_BETTER).sum())
+    same = int((s == PERFORMANCE_SAME).sum())
+    worst = int((s == PERFORMANCE_WORST).sum() + (s == PERFORMANCE_WORSE_ALT).sum())
+    return (better, same, worst)
 
 
 class PersonalizationAnalyzer:
@@ -65,9 +102,9 @@ class PersonalizationAnalyzer:
         # Career focus (daily career goal — not "focus quality"; see Focus section in reports)
         if "career_focus" in self.df.columns:
             analysis["has_data"] = True
-            career_counts = self.df["career_focus"].value_counts()
-            good_days = career_counts.get("Good, achieved my today's goal", 0)
-            lazy_days = career_counts.get("Lazy, didn't wanted to work", 0)
+            s = self.df["career_focus"].astype(str).str.strip()
+            good_days = int((s == CAREER_GOOD).sum())
+            lazy_days = int((s == CAREER_LAZY).sum())
 
             if good_days >= 5:
                 analysis["insights"].append(
@@ -246,31 +283,32 @@ class PersonalizationAnalyzer:
 
         analysis["has_data"] = True
 
-        marriage_counts = self.df["marriage"].value_counts()
-        good_days = marriage_counts.get("Good", 0)
-        okayish_days = marriage_counts.get("Okayish", 0)
-        not_good_days = marriage_counts.get("Not good", 0)
+        s = self.df["marriage"].astype(str).str.strip()
+        okayish_days = int((s == MARRIAGE_OKAYISH).sum())
+        not_good_days = int((s == MARRIAGE_NOT_GOOD).sum())
 
         analysis["metrics"][
             "status"
-        ] = f"Good: {good_days}, Okayish: {okayish_days}, Not good: {not_good_days}"
+        ] = f"Okayish: {okayish_days}, Not good: {not_good_days}"
 
-        good_rate = good_days / self.total_days if self.total_days > 0 else 0
+        n = self.total_days
+        okayish_rate = okayish_days / n if n else 0.0
+        not_good_rate = not_good_days / n if n else 0.0
 
-        if good_rate >= 0.7:
+        if okayish_rate >= 0.7:
             analysis["insights"].append(
-                f"✅ Strong relationship focus: {good_days}/{self.total_days} good days"
+                f"✅ Marriage: {okayish_days}/{n} okayish days"
             )
             analysis["score"] = 100
-        elif good_rate >= 0.4:
+        elif okayish_rate >= 0.4 or not_good_rate < 0.5:
             analysis["insights"].append(
-                f"⚠️ Moderate performance: {good_days} good, {okayish_days} okayish days"
+                f"⚠️ Marriage: {okayish_days} okayish · {not_good_days} not good"
             )
             analysis["insights"].append("💡 Tip: Schedule quality time together")
             analysis["score"] = 60
         else:
             analysis["insights"].append(
-                f"⚠️ Needs attention: {not_good_days} not good days"
+                f"⚠️ Needs attention: {not_good_days}/{n} not good days"
             )
             analysis["insights"].append(
                 "💡 Tip: Have an open conversation about expectations"
@@ -286,28 +324,25 @@ class PersonalizationAnalyzer:
         if self.df.empty:
             return analysis
 
-        # Performance trend
         if "performance" in self.df.columns:
-            perf_counts = self.df["performance"].value_counts()
-            better = perf_counts.get("Yes, better than yesterday", 0)
-            same = perf_counts.get("Same as yesterday", 0)
-            worse = perf_counts.get("Worst than yesterday", 0)
+            better, same, worse = _performance_counts(self.df)
 
             if better >= worse:
                 analysis["insights"].append(
-                    f"Week Trend: Better than yesterday on {better}/{self.total_days} days 🎉"
+                    f"Week Trend: Better than yesterday on {better}/{self.total_days} days"
+                    f" (same {same}, down {worse}) 🎉"
                 )
             else:
                 analysis["insights"].append(
-                    f"Week Trend: {worse} worse days - Let's turn this around"
+                    f"Week Trend: {worse} worse days (better {better}, same {same}) — turn it around"
                 )
 
         # Happiness
         if "happiness" in self.df.columns:
-            happy_counts = self.df["happiness"].value_counts()
-            happy = happy_counts.get("Yes, I am happy", 0)
-            neutral = happy_counts.get("Slightly Neutral, could do better", 0)
-            bad = happy_counts.get("No, I performed bad", 0)
+            hs = self.df["happiness"].astype(str).str.strip()
+            happy = int((hs == HAPPY_YES).sum())
+            neutral = int((hs == HAPPY_NEUTRAL).sum())
+            bad = int((hs == HAPPY_BAD).sum())
 
             analysis["metrics"]["happy_days"] = f"{happy}/{self.total_days} days"
 
@@ -328,12 +363,17 @@ class PersonalizationAnalyzer:
         # Day overview
         if "day_overview" in self.df.columns:
             overview_counts = self.df["day_overview"].value_counts()
-            hard_enjoyed = overview_counts.get("Did hard work - enjoyed", 0)
-            procrastinated = overview_counts.get("Procrastinated", 0)
+            hard_enjoyed = overview_counts.get(DAY_OVERVIEW_HARD_ENJOYED, 0)
+            procrastinated = overview_counts.get(DAY_OVERVIEW_PROCRASTINATED, 0)
+            easy_days = overview_counts.get(DAY_OVERVIEW_EASY, 0)
 
             if hard_enjoyed >= 4:
                 analysis["insights"].append(
                     f"🌟 This Week's Win: Did hard work & enjoyed it {hard_enjoyed} days!"
+                )
+            if easy_days >= 4:
+                analysis["insights"].append(
+                    f"📗 Easy days: {easy_days} — ok for recovery; balance with harder focus when ready"
                 )
             if procrastinated >= 3:
                 analysis["insights"].append(
@@ -362,9 +402,13 @@ class PersonalizationAnalyzer:
         df, n = self.df, self._n()
         lines: List[str] = []
         if "career_focus" in df.columns:
-            good = (df["career_focus"] == "Good, achieved my today's goal").sum()
-            lazy = (df["career_focus"] == "Lazy, didn't wanted to work").sum()
-            lines.append(f"• Career focus: {good}/{n} on goal, {lazy} low")
+            cs = df["career_focus"].astype(str).str.strip()
+            good = int((cs == CAREER_GOOD).sum())
+            neutral = int((cs == CAREER_NEUTRAL).sum())
+            lazy = int((cs == CAREER_LAZY).sum())
+            lines.append(
+                f"• Career focus: on goal {good}/{n} · neutral {neutral} · low {lazy}"
+            )
         if "coding" in df.columns:
             cy = (df["coding"] == "Yes").sum()
             lines.append(f"• Code ≥1h: {cy}/{n}")
@@ -398,31 +442,40 @@ class PersonalizationAnalyzer:
         df, n = self.df, self._n()
         lines: List[str] = []
         if "focus" in df.columns:
-            sharp = (df["focus"] == "Good, razor sharp").sum()
-            multi = (df["focus"] == "I was multi-tasking, not good focus").sum()
+            fs = df["focus"].astype(str).str.strip()
+            sharp = int((fs == "Good, razor sharp").sum())
+            multi = int((fs == "I was multi-tasking, not good focus").sum())
             lines.append(f"• Focus sharp: {sharp}/{n} · multitask: {multi}/{n}")
         if "day_overview" in df.columns:
-            hard = (df["day_overview"] == "Did hard work - enjoyed").sum()
-            proc = (df["day_overview"] == "Procrastinated").sum()
-            burn = (df["day_overview"] == "Did hard work - burned out").sum()
-            lines.append(f"• Day: hard+enjoyed {hard} · procrastinated {proc} · burned {burn}")
+            dos = df["day_overview"].astype(str).str.strip()
+            easy = int((dos == DAY_OVERVIEW_EASY).sum())
+            hard = int((dos == DAY_OVERVIEW_HARD_ENJOYED).sum())
+            burn = int((dos == DAY_OVERVIEW_HARD_BURNED).sum())
+            proc = int((dos == DAY_OVERVIEW_PROCRASTINATED).sum())
+            lines.append(
+                f"• Day: easy {easy} · hard+enjoyed {hard} · burned {burn} · procrastinated {proc}"
+            )
         return lines
 
     def _happy_misc_lines(self) -> List[str]:
         df, n = self.df, self._n()
         lines: List[str] = []
         if "happiness" in df.columns:
-            happy = (df["happiness"] == "Yes, I am happy").sum()
-            lines.append(f"• Happy w/ performance: {happy}/{n}")
+            hs = df["happiness"].astype(str).str.strip()
+            h_yes = int((hs == HAPPY_YES).sum())
+            h_neu = int((hs == HAPPY_NEUTRAL).sum())
+            h_bad = int((hs == HAPPY_BAD).sum())
+            lines.append(
+                f"• Happy w/ today: {h_yes}/{n} · neutral {h_neu} · low {h_bad}"
+            )
         if "marriage" in df.columns:
-            g = (df["marriage"] == "Good").sum()
-            ok = (df["marriage"] == "Okayish").sum()
-            bad = (df["marriage"] == "Not good").sum()
-            lines.append(f"• Marriage: good {g} · ok {ok} · not good {bad}")
+            ms = df["marriage"].astype(str).str.strip()
+            ok = int((ms == MARRIAGE_OKAYISH).sum())
+            bad = int((ms == MARRIAGE_NOT_GOOD).sum())
+            lines.append(f"• Marriage: okayish {ok}/{n} · not good {bad}/{n}")
         if "performance" in df.columns:
-            b = (df["performance"] == "Yes, better than yesterday").sum()
-            w = (df["performance"] == "Worst than yesterday").sum()
-            lines.append(f"• vs yesterday: better {b} · worse {w}")
+            b, same, w = _performance_counts(df)
+            lines.append(f"• vs yesterday: better {b} · same {same} · worse {w}")
         return lines
 
     def _append_section(
@@ -544,9 +597,11 @@ class PersonalizationAnalyzer:
             )
         df = self.df
         if "focus" in df.columns and "day_overview" in df.columns:
-            sharp = (df["focus"] == "Good, razor sharp").sum()
-            multi = (df["focus"] == "I was multi-tasking, not good focus").sum()
-            proc = (df["day_overview"] == "Procrastinated").sum()
+            fs = df["focus"].astype(str).str.strip()
+            sharp = int((fs == "Good, razor sharp").sum())
+            multi = int((fs == "I was multi-tasking, not good focus").sum())
+            dos = df["day_overview"].astype(str).str.strip()
+            proc = int((dos == DAY_OVERVIEW_PROCRASTINATED).sum())
             if multi > sharp or proc >= 3:
                 out.append("Focus: fewer tabs, time-blocks; reduce procrastination")
         if marriage["score"] < 60:
@@ -565,7 +620,7 @@ if __name__ == "__main__":
         "protein": [">= 100g"] * 6 + ["< 100g"],
         "workout": ["Yes"] * 5 + ["No"] * 2,
         "sleep": ["7 hrs", "6 hrs", "7 hrs", "8 hrs", "6 hrs", "7 hrs", "6 hrs"],
-        "marriage": ["Good", "Okayish", "Good", "Okayish", "Good", "Good", "Okayish"],
+        "marriage": ["Okayish", "Okayish", "Not good", "Okayish", "Okayish", "Okayish", "Not good"],
         "happiness": ["Yes, I am happy"] * 5
         + ["Slightly Neutral, could do better"] * 2,
     }

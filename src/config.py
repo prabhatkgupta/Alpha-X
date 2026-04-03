@@ -3,6 +3,8 @@
 import os
 import re
 from pathlib import Path
+
+import pandas as pd
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -60,7 +62,7 @@ GOALS_PRIORITY = {
     4: "Happy & misc",
 }
 
-# Column mapping from Google Form to data fields
+# Column mapping from Google Form to data fields (keys must match sheet row 1 text)
 COLUMN_MAPPING = {
     "Timestamp": "timestamp",
     "Met Protein intake ?": "protein",
@@ -77,6 +79,18 @@ COLUMN_MAPPING = {
     "How was your focus ?": "focus",
     "Focused on Career ?": "career_focus",
 }
+
+
+def apply_sheet_column_mapping(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Rename sheet columns to internal names.
+
+    Strips whitespace on headers first so minor Sheet/Form export differences
+    still match COLUMN_MAPPING (fixes missing `performance` / vs yesterday).
+    """
+    out = df.copy()
+    out.columns = [str(c).strip() for c in out.columns]
+    return out.rename(columns=COLUMN_MAPPING)
 
 
 def validate_config():
