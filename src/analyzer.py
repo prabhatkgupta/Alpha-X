@@ -9,6 +9,12 @@ from collections import Counter
 # Visible section breaks in Telegram/WhatsApp reports
 SECTION_LINE = "━━━━━━━━━━━━━━━━━━━"
 
+# Google Form "Day Overview ?" — must match linked sheet values exactly
+DAY_OVERVIEW_EASY = "Did easy work"
+DAY_OVERVIEW_HARD_ENJOYED = "Did hard work - enjoyed"
+DAY_OVERVIEW_HARD_BURNED = "Did hard work - burned out"
+DAY_OVERVIEW_PROCRASTINATED = "Procrastinated"
+
 
 def _sleep_hours_from_cell(val) -> Optional[int]:
     if not isinstance(val, str):
@@ -328,12 +334,17 @@ class PersonalizationAnalyzer:
         # Day overview
         if "day_overview" in self.df.columns:
             overview_counts = self.df["day_overview"].value_counts()
-            hard_enjoyed = overview_counts.get("Did hard work - enjoyed", 0)
-            procrastinated = overview_counts.get("Procrastinated", 0)
+            hard_enjoyed = overview_counts.get(DAY_OVERVIEW_HARD_ENJOYED, 0)
+            procrastinated = overview_counts.get(DAY_OVERVIEW_PROCRASTINATED, 0)
+            easy_days = overview_counts.get(DAY_OVERVIEW_EASY, 0)
 
             if hard_enjoyed >= 4:
                 analysis["insights"].append(
                     f"🌟 This Week's Win: Did hard work & enjoyed it {hard_enjoyed} days!"
+                )
+            if easy_days >= 4:
+                analysis["insights"].append(
+                    f"📗 Easy days: {easy_days} — ok for recovery; balance with harder focus when ready"
                 )
             if procrastinated >= 3:
                 analysis["insights"].append(
@@ -402,10 +413,13 @@ class PersonalizationAnalyzer:
             multi = (df["focus"] == "I was multi-tasking, not good focus").sum()
             lines.append(f"• Focus sharp: {sharp}/{n} · multitask: {multi}/{n}")
         if "day_overview" in df.columns:
-            hard = (df["day_overview"] == "Did hard work - enjoyed").sum()
-            proc = (df["day_overview"] == "Procrastinated").sum()
-            burn = (df["day_overview"] == "Did hard work - burned out").sum()
-            lines.append(f"• Day: hard+enjoyed {hard} · procrastinated {proc} · burned {burn}")
+            easy = (df["day_overview"] == DAY_OVERVIEW_EASY).sum()
+            hard = (df["day_overview"] == DAY_OVERVIEW_HARD_ENJOYED).sum()
+            burn = (df["day_overview"] == DAY_OVERVIEW_HARD_BURNED).sum()
+            proc = (df["day_overview"] == DAY_OVERVIEW_PROCRASTINATED).sum()
+            lines.append(
+                f"• Day: easy {easy} · hard+enjoyed {hard} · burned {burn} · procrastinated {proc}"
+            )
         return lines
 
     def _happy_misc_lines(self) -> List[str]:
@@ -546,7 +560,7 @@ class PersonalizationAnalyzer:
         if "focus" in df.columns and "day_overview" in df.columns:
             sharp = (df["focus"] == "Good, razor sharp").sum()
             multi = (df["focus"] == "I was multi-tasking, not good focus").sum()
-            proc = (df["day_overview"] == "Procrastinated").sum()
+            proc = (df["day_overview"] == DAY_OVERVIEW_PROCRASTINATED).sum()
             if multi > sharp or proc >= 3:
                 out.append("Focus: fewer tabs, time-blocks; reduce procrastination")
         if marriage["score"] < 60:
