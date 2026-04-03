@@ -52,12 +52,12 @@ TELEGRAM_BOT_TOKEN = _tg_token.strip() if _tg_token else None
 _tg_chat = os.getenv("TELEGRAM_CHAT_ID")
 TELEGRAM_CHAT_ID = _tg_chat.strip() if _tg_chat else None
 
-# Goal Priorities
+# Goal areas (order for reports)
 GOALS_PRIORITY = {
-    1: "Career Growth",
-    2: "Health & Fitness",
-    3: "Marriage",
-    4: "Investments Growth",
+    1: "Career",
+    2: "Health",
+    3: "Focus",
+    4: "Happy & misc",
 }
 
 # Column mapping from Google Form to data fields

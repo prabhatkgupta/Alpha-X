@@ -1,9 +1,20 @@
 """Data analyzer for generating insights from daily tracking data."""
 
+import re
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from collections import Counter
+
+# Visible section breaks in Telegram/WhatsApp reports
+SECTION_LINE = "━━━━━━━━━━━━━━━━━━━━━━"
+
+
+def _sleep_hours_from_cell(val) -> Optional[int]:
+    if not isinstance(val, str):
+        return None
+    m = re.search(r"(\d+)", val)
+    return int(m.group(1)) if m else None
 
 
 class PersonalizationAnalyzer:
@@ -39,44 +50,19 @@ class PersonalizationAnalyzer:
                 analysis["insights"].append(
                     f"✅ Coded {coding_yes}/{self.total_days} days - Excellent!"
                 )
-                analysis["score"] += 35
+                analysis["score"] += 45
             elif coding_rate >= 0.7:
                 analysis["insights"].append(
                     f"✅ Coded {coding_yes}/{self.total_days} days - Good!"
                 )
-                analysis["score"] += 25
+                analysis["score"] += 35
             else:
                 analysis["insights"].append(
                     f"⚠️ Only coded {coding_yes}/{self.total_days} days - Need more consistency"
                 )
-                analysis["score"] += 10
-
-        # Focus quality
-        if "focus" in self.df.columns:
-            analysis["has_data"] = True
-            focus_counts = self.df["focus"].value_counts()
-            sharp_days = focus_counts.get("Good, razor sharp", 0)
-            multitask_days = focus_counts.get("I was multi-tasking, not good focus", 0)
-
-            analysis["metrics"][
-                "focus"
-            ] = f"{sharp_days} days sharp, {multitask_days} days multi-tasking"
-
-            if sharp_days >= multitask_days:
-                analysis["insights"].append(
-                    f"✅ Focus: {sharp_days} days razor sharp - Great!"
-                )
-                analysis["score"] += 35
-            else:
-                analysis["insights"].append(
-                    f"⚠️ Focus: {multitask_days} days multi-tasking - Need improvement"
-                )
-                analysis["insights"].append(
-                    "💡 Tip: Try Pomodoro technique (25 min focus + 5 min break)"
-                )
                 analysis["score"] += 15
 
-        # Career focus
+        # Career focus (daily career goal — not "focus quality"; see Focus section in reports)
         if "career_focus" in self.df.columns:
             analysis["has_data"] = True
             career_counts = self.df["career_focus"].value_counts()
@@ -87,13 +73,15 @@ class PersonalizationAnalyzer:
                 analysis["insights"].append(
                     f"✅ Achieved daily goals {good_days} days - Fantastic!"
                 )
-                analysis["score"] += 30
+                analysis["score"] += 45
             elif lazy_days >= 3:
                 analysis["insights"].append(
                     f"⚠️ {lazy_days} lazy days - Let's fix this!"
                 )
                 analysis["insights"].append("💡 Tip: Break goals into smaller tasks")
-                analysis["score"] += 10
+                analysis["score"] += 15
+            else:
+                analysis["score"] += 25
 
         # If no career data at all
         if not analysis["has_data"]:
@@ -168,17 +156,11 @@ class PersonalizationAnalyzer:
         # Sleep analysis
         if "sleep" in self.df.columns:
             analysis["has_data"] = True
-            # Extract numeric hours from sleep strings
             sleep_hours = []
             for val in self.df["sleep"]:
-                if isinstance(val, str):
-                    if "hrs" in val or "hr" in val:
-                        # Extract first number from string like "7 hrs" or ">=10 hrs"
-                        import re
-
-                        match = re.search(r"(\d+)", val)
-                        if match:
-                            sleep_hours.append(int(match.group(1)))
+                h = _sleep_hours_from_cell(val)
+                if h is not None:
+                    sleep_hours.append(h)
 
             if sleep_hours:
                 avg_sleep = sum(sleep_hours) / len(sleep_hours)
@@ -222,6 +204,22 @@ class PersonalizationAnalyzer:
                 analysis["insights"].append(
                     "💡 Tip: Morning sun boosts vitamin D & mood"
                 )
+
+        # Chewing gum
+        if "chewing_gum" in self.df.columns:
+            analysis["has_data"] = True
+            gum_yes = (self.df["chewing_gum"].astype(str).str.strip().str.lower() == "yes").sum()
+            analysis["metrics"]["chewing_gum"] = f"{gum_yes}/{self.total_days}"
+            if gum_yes >= self.total_days * 0.7:
+                analysis["insights"].append(
+                    f"✅ Chewing gum: {gum_yes}/{self.total_days} days"
+                )
+                analysis["score"] += 10
+            elif gum_yes > 0:
+                analysis["insights"].append(
+                    f"Chewing gum: {gum_yes}/{self.total_days} days"
+                )
+                analysis["score"] += 5
 
         # If no health data at all
         if not analysis["has_data"]:
@@ -344,83 +342,216 @@ class PersonalizationAnalyzer:
 
         return analysis
 
+    @staticmethod
+    def days_logged_ratio(df: pd.DataFrame, period_days: int) -> Tuple[int, int]:
+        """Distinct calendar days with an entry vs period length (e.g. 7 or 30)."""
+        if df.empty or period_days <= 0:
+            return (0, max(period_days, 0))
+        if "timestamp" in df.columns and df["timestamp"].notna().any():
+            ts = pd.to_datetime(df["timestamp"], errors="coerce").dropna()
+            if ts.empty:
+                return (0, period_days)
+            uniq = int(ts.dt.normalize().nunique())
+            return (min(uniq, period_days), period_days)
+        return (min(len(df), period_days), period_days)
+
+    def _n(self) -> int:
+        return max(self.total_days, 1)
+
+    def _career_lines(self) -> List[str]:
+        df, n = self.df, self._n()
+        lines: List[str] = []
+        if "career_focus" in df.columns:
+            good = (df["career_focus"] == "Good, achieved my today's goal").sum()
+            lazy = (df["career_focus"] == "Lazy, didn't wanted to work").sum()
+            lines.append(f"• Career focus: {good}/{n} on goal, {lazy} low")
+        if "coding" in df.columns:
+            cy = (df["coding"] == "Yes").sum()
+            lines.append(f"• Code ≥1h: {cy}/{n}")
+        return lines
+
+    def _health_lines(self) -> List[str]:
+        df, n = self.df, self._n()
+        lines: List[str] = []
+        if "workout" in df.columns:
+            w = (df["workout"] == "Yes").sum()
+            lines.append(f"• Workout: {w}/{n}")
+        if "sunshine" in df.columns:
+            s = (df["sunshine"] == "Yes").sum()
+            lines.append(f"• Sunshine 15m: {s}/{n}")
+        if "protein" in df.columns:
+            p = (df["protein"] == ">= 100g").sum()
+            lines.append(f"• Protein ≥100g: {p}/{n}")
+        if "sleep" in df.columns:
+            hrs = [_sleep_hours_from_cell(v) for v in df["sleep"]]
+            hrs = [h for h in hrs if h is not None]
+            if hrs:
+                ge7 = sum(1 for h in hrs if h >= 7)
+                avg = sum(hrs) / len(hrs)
+                lines.append(f"• Sleep ≥7h: {ge7}/{len(hrs)} nights (avg {avg:.1f}h)")
+        if "chewing_gum" in df.columns:
+            g = (df["chewing_gum"].astype(str).str.strip().str.lower() == "yes").sum()
+            lines.append(f"• Chewing gum: {g}/{n}")
+        return lines
+
+    def _focus_lines(self) -> List[str]:
+        df, n = self.df, self._n()
+        lines: List[str] = []
+        if "focus" in df.columns:
+            sharp = (df["focus"] == "Good, razor sharp").sum()
+            multi = (df["focus"] == "I was multi-tasking, not good focus").sum()
+            lines.append(f"• Focus sharp: {sharp}/{n} · multitask: {multi}/{n}")
+        if "day_overview" in df.columns:
+            hard = (df["day_overview"] == "Did hard work - enjoyed").sum()
+            proc = (df["day_overview"] == "Procrastinated").sum()
+            burn = (df["day_overview"] == "Did hard work - burned out").sum()
+            lines.append(f"• Day: hard+enjoyed {hard} · procrastinated {proc} · burned {burn}")
+        return lines
+
+    def _happy_misc_lines(self) -> List[str]:
+        df, n = self.df, self._n()
+        lines: List[str] = []
+        if "happiness" in df.columns:
+            happy = (df["happiness"] == "Yes, I am happy").sum()
+            lines.append(f"• Happy w/ performance: {happy}/{n}")
+        if "marriage" in df.columns:
+            g = (df["marriage"] == "Good").sum()
+            ok = (df["marriage"] == "Okayish").sum()
+            bad = (df["marriage"] == "Not good").sum()
+            lines.append(f"• Marriage: good {g} · ok {ok} · not good {bad}")
+        if "performance" in df.columns:
+            b = (df["performance"] == "Yes, better than yesterday").sum()
+            w = (df["performance"] == "Worst than yesterday").sum()
+            lines.append(f"• vs yesterday: better {b} · worse {w}")
+        return lines
+
+    def _append_section(
+        self, lines: List[str], title: str, body: List[str]
+    ) -> None:
+        if not body:
+            return
+        lines.append(SECTION_LINE)
+        lines.append(title)
+        lines.append(SECTION_LINE)
+        lines.extend(body)
+        lines.append("")
+
+    def _overall_one_liner(self) -> str:
+        career = self.analyze_career()
+        health = self.analyze_health()
+        marriage = self.analyze_marriage()
+        tracked = [
+            s
+            for s in (career, health, marriage)
+            if s.get("has_data", False)
+        ]
+        if not tracked:
+            return ""
+        avg = sum(s["score"] for s in tracked) / len(tracked)
+        if avg >= 70:
+            return "🎉 Strong week on core goals."
+        if avg >= 50:
+            return "👍 Decent week — tighten the weak spots."
+        return "💪 Rough week — pick one lever for next week."
+
     def generate_weekly_report(self) -> str:
-        """Generate complete weekly report."""
+        """Short weekly report: Career → Health → Focus → Happy & misc, with days logged X/7."""
         if self.df.empty:
             return "❌ No data available for this week"
 
-        # Get date range
-        start_date = self.df["timestamp"].min()
-        end_date = self.df["timestamp"].max()
+        logged, period = self.days_logged_ratio(self.df, 7)
+        ts = self.df["timestamp"] if "timestamp" in self.df.columns else None
+        if ts is not None and ts.notna().any():
+            start_date = pd.to_datetime(ts).min()
+            end_date = pd.to_datetime(ts).max()
+            hdr = f"📊 Weekly · {start_date.strftime('%b %d')}–{end_date.strftime('%b %d, %Y')}"
+        else:
+            hdr = "📊 Weekly report"
 
-        report_lines = [
-            f"📊 Weekly Report ({start_date.strftime('%b %d')}-{end_date.strftime('%b %d, %Y')})",
+        lines = [
+            hdr,
+            f"📝 Days logged: {logged}/{period}",
             "",
         ]
 
-        # Analyze each goal area
+        self._append_section(lines, "🎯 Career", self._career_lines())
+        self._append_section(lines, "💪 Health", self._health_lines())
+        self._append_section(lines, "🧠 Focus", self._focus_lines())
+        self._append_section(lines, "😊 Happy & misc", self._happy_misc_lines())
+
+        closing = self._overall_one_liner()
+        if closing:
+            lines.append(SECTION_LINE)
+            lines.append(closing)
+
+        return "\n".join(lines).strip()
+
+    def generate_monthly_report(self, period_days: int = 30) -> str:
+        """Concise monthly report with days logged X/30 and the same four sections."""
+        if self.df.empty:
+            return "❌ No data available for monthly analysis"
+
+        logged, period = self.days_logged_ratio(self.df, period_days)
+        ts = self.df["timestamp"] if "timestamp" in self.df.columns else None
+        if ts is not None and ts.notna().any():
+            start_date = pd.to_datetime(ts).min()
+            end_date = pd.to_datetime(ts).max()
+            hdr = f"📊 Monthly · {start_date.strftime('%b %d')} – {end_date.strftime('%b %d, %Y')}"
+        else:
+            hdr = "📊 Monthly report"
+
+        lines = [
+            hdr,
+            f"📝 Days logged: {logged}/{period}",
+            "",
+        ]
+
+        self._append_section(lines, "🎯 Career", self._career_lines())
+        self._append_section(lines, "💪 Health", self._health_lines())
+        self._append_section(lines, "🧠 Focus", self._focus_lines())
+        self._append_section(lines, "😊 Happy & misc", self._happy_misc_lines())
+
         career = self.analyze_career()
         health = self.analyze_health()
         marriage = self.analyze_marriage()
-        overall = self.analyze_overall_performance()
-
-        # Build report - only include sections with data
-        tracked_goals = []
-        for section in [career, health, marriage]:
-            if section.get("has_data", False) or section["insights"]:
-                tracked_goals.append(section["title"])
-                report_lines.append(section["title"])
-                for insight in section["insights"]:
-                    report_lines.append(insight)
-                report_lines.append("")
-
-        # Overall section
-        report_lines.append(overall["title"])
-        for insight in overall["insights"]:
-            report_lines.append(insight)
-        report_lines.append("")
-
-        # Calculate overall score (only from tracked areas)
-        tracked_sections = [
-            s for s in [career, health, marriage] if s.get("has_data", False)
-        ]
-        if tracked_sections:
-            total_score = sum(s["score"] for s in tracked_sections) / len(
-                tracked_sections
-            )
-
-            if total_score >= 70:
-                report_lines.append("🎉 Excellent week overall! Keep it up! 💪")
-            elif total_score >= 50:
-                report_lines.append("👍 Good week! Room for improvement 💪")
+        tracked = [s for s in (career, health, marriage) if s.get("has_data", False)]
+        if tracked:
+            avg = sum(s["score"] for s in tracked) / len(tracked)
+            if avg >= 70:
+                tag = "🎉 Solid month on core goals."
+            elif avg >= 50:
+                tag = "👍 OK month — push the gaps next month."
             else:
-                report_lines.append("⚠️ Tough week. Focus on one thing at a time 💪")
+                tag = "💪 Hard month — reset and stack small wins."
+            lines.append(SECTION_LINE)
+            lines.append(tag)
 
-        # Add tracking summary
-        if tracked_goals:
-            report_lines.append("")
-            report_lines.append(f"📋 Currently tracking: {len(tracked_goals)} goal(s)")
-
-        return "\n".join(report_lines)
+        return "\n".join(lines).strip()
 
     def get_focus_areas(self) -> List[str]:
-        """Identify top 3 focus areas for next week."""
-        focus_areas = []
-
-        # Check each metric
+        """Top focus hints aligned with Career / Health / Focus / Happy & misc."""
+        out: List[str] = []
         career = self.analyze_career()
         health = self.analyze_health()
         marriage = self.analyze_marriage()
 
-        # Prioritize based on scores
         if career["score"] < 60:
-            focus_areas.append("Career: Improve coding consistency and focus")
+            out.append("Career: code ≥1h more often + hit daily career goal")
         if health["score"] < 60:
-            focus_areas.append("Health: Better sleep and workout routine")
+            out.append(
+                "Health: workout, sun, protein, sleep ≥7h, chewing gum habit"
+            )
+        df = self.df
+        if "focus" in df.columns and "day_overview" in df.columns:
+            sharp = (df["focus"] == "Good, razor sharp").sum()
+            multi = (df["focus"] == "I was multi-tasking, not good focus").sum()
+            proc = (df["day_overview"] == "Procrastinated").sum()
+            if multi > sharp or proc >= 3:
+                out.append("Focus: fewer tabs, time-blocks; reduce procrastination")
         if marriage["score"] < 60:
-            focus_areas.append("Marriage: More quality time together")
+            out.append("Happy & misc: marriage + end-day happiness check-in")
 
-        return focus_areas[:3]  # Top 3
+        return out[:4]
 
 
 if __name__ == "__main__":
