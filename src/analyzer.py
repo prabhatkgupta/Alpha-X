@@ -15,12 +15,44 @@ DAY_OVERVIEW_HARD_ENJOYED = "Did hard work - enjoyed"
 DAY_OVERVIEW_HARD_BURNED = "Did hard work - burned out"
 DAY_OVERVIEW_PROCRASTINATED = "Procrastinated"
 
+# "You did better overall ?"
+PERFORMANCE_BETTER = "Yes, better than yesterday"
+PERFORMANCE_SAME = "Same as yesterday"
+PERFORMANCE_WORST = "Worst than yesterday"  # Form spelling
+PERFORMANCE_WORSE_ALT = "Worse than yesterday"  # common typo / alt
+
+# "Focused on Career ?"
+CAREER_GOOD = "Good, achieved my today's goal"
+CAREER_NEUTRAL = "Neutral, gave my best"
+CAREER_LAZY = "Lazy, didn't wanted to work"
+
+# "Are you happy today with your performance ?"
+HAPPY_YES = "Yes, I am happy"
+HAPPY_NEUTRAL = "Slightly Neutral, could do better"
+HAPPY_BAD = "No, I performed bad"
+
+# "Marriage goals ?" (current form: Okayish | Not good; legacy: Good)
+MARRIAGE_GOOD = "Good"
+MARRIAGE_OKAYISH = "Okayish"
+MARRIAGE_NOT_GOOD = "Not good"
+
 
 def _sleep_hours_from_cell(val) -> Optional[int]:
     if not isinstance(val, str):
         return None
     m = re.search(r"(\d+)", val)
     return int(m.group(1)) if m else None
+
+
+def _performance_counts(df: pd.DataFrame) -> Tuple[int, int, int]:
+    """Counts for vs-yesterday question; strips cell text for robust matching."""
+    if "performance" not in df.columns:
+        return (0, 0, 0)
+    s = df["performance"].astype(str).str.strip()
+    better = int((s == PERFORMANCE_BETTER).sum())
+    same = int((s == PERFORMANCE_SAME).sum())
+    worst = int((s == PERFORMANCE_WORST).sum() + (s == PERFORMANCE_WORSE_ALT).sum())
+    return (better, same, worst)
 
 
 class PersonalizationAnalyzer:
@@ -71,9 +103,9 @@ class PersonalizationAnalyzer:
         # Career focus (daily career goal — not "focus quality"; see Focus section in reports)
         if "career_focus" in self.df.columns:
             analysis["has_data"] = True
-            career_counts = self.df["career_focus"].value_counts()
-            good_days = career_counts.get("Good, achieved my today's goal", 0)
-            lazy_days = career_counts.get("Lazy, didn't wanted to work", 0)
+            s = self.df["career_focus"].astype(str).str.strip()
+            good_days = int((s == CAREER_GOOD).sum())
+            lazy_days = int((s == CAREER_LAZY).sum())
 
             if good_days >= 5:
                 analysis["insights"].append(
@@ -252,25 +284,30 @@ class PersonalizationAnalyzer:
 
         analysis["has_data"] = True
 
-        marriage_counts = self.df["marriage"].value_counts()
-        good_days = marriage_counts.get("Good", 0)
-        okayish_days = marriage_counts.get("Okayish", 0)
-        not_good_days = marriage_counts.get("Not good", 0)
+        s = self.df["marriage"].astype(str).str.strip()
+        good_days = int((s == MARRIAGE_GOOD).sum())
+        okayish_days = int((s == MARRIAGE_OKAYISH).sum())
+        not_good_days = int((s == MARRIAGE_NOT_GOOD).sum())
 
         analysis["metrics"][
             "status"
         ] = f"Good: {good_days}, Okayish: {okayish_days}, Not good: {not_good_days}"
 
-        good_rate = good_days / self.total_days if self.total_days > 0 else 0
+        n = self.total_days
+        # Current form is Okayish | Not good only; "good enough" = Good + Okayish
+        positive_days = good_days + okayish_days
+        positive_rate = positive_days / n if n else 0.0
+        not_good_rate = not_good_days / n if n else 0.0
 
-        if good_rate >= 0.7:
+        if positive_rate >= 0.7:
             analysis["insights"].append(
-                f"✅ Strong relationship focus: {good_days}/{self.total_days} good days"
+                f"✅ Marriage: {positive_days}/{n} ok or better (okayish + good)"
             )
             analysis["score"] = 100
-        elif good_rate >= 0.4:
+        elif positive_rate >= 0.4 or not_good_rate < 0.5:
             analysis["insights"].append(
-                f"⚠️ Moderate performance: {good_days} good, {okayish_days} okayish days"
+                f"⚠️ Marriage: {okayish_days} okayish, {not_good_days} not good"
+                + (f", {good_days} good" if good_days else "")
             )
             analysis["insights"].append("💡 Tip: Schedule quality time together")
             analysis["score"] = 60
@@ -292,28 +329,25 @@ class PersonalizationAnalyzer:
         if self.df.empty:
             return analysis
 
-        # Performance trend
         if "performance" in self.df.columns:
-            perf_counts = self.df["performance"].value_counts()
-            better = perf_counts.get("Yes, better than yesterday", 0)
-            same = perf_counts.get("Same as yesterday", 0)
-            worse = perf_counts.get("Worst than yesterday", 0)
+            better, same, worse = _performance_counts(self.df)
 
             if better >= worse:
                 analysis["insights"].append(
-                    f"Week Trend: Better than yesterday on {better}/{self.total_days} days 🎉"
+                    f"Week Trend: Better than yesterday on {better}/{self.total_days} days"
+                    f" (same {same}, down {worse}) 🎉"
                 )
             else:
                 analysis["insights"].append(
-                    f"Week Trend: {worse} worse days - Let's turn this around"
+                    f"Week Trend: {worse} worse days (better {better}, same {same}) — turn it around"
                 )
 
         # Happiness
         if "happiness" in self.df.columns:
-            happy_counts = self.df["happiness"].value_counts()
-            happy = happy_counts.get("Yes, I am happy", 0)
-            neutral = happy_counts.get("Slightly Neutral, could do better", 0)
-            bad = happy_counts.get("No, I performed bad", 0)
+            hs = self.df["happiness"].astype(str).str.strip()
+            happy = int((hs == HAPPY_YES).sum())
+            neutral = int((hs == HAPPY_NEUTRAL).sum())
+            bad = int((hs == HAPPY_BAD).sum())
 
             analysis["metrics"]["happy_days"] = f"{happy}/{self.total_days} days"
 
@@ -373,9 +407,13 @@ class PersonalizationAnalyzer:
         df, n = self.df, self._n()
         lines: List[str] = []
         if "career_focus" in df.columns:
-            good = (df["career_focus"] == "Good, achieved my today's goal").sum()
-            lazy = (df["career_focus"] == "Lazy, didn't wanted to work").sum()
-            lines.append(f"• Career focus: {good}/{n} on goal, {lazy} low")
+            cs = df["career_focus"].astype(str).str.strip()
+            good = int((cs == CAREER_GOOD).sum())
+            neutral = int((cs == CAREER_NEUTRAL).sum())
+            lazy = int((cs == CAREER_LAZY).sum())
+            lines.append(
+                f"• Career focus: on goal {good}/{n} · neutral {neutral} · low {lazy}"
+            )
         if "coding" in df.columns:
             cy = (df["coding"] == "Yes").sum()
             lines.append(f"• Code ≥1h: {cy}/{n}")
@@ -409,14 +447,16 @@ class PersonalizationAnalyzer:
         df, n = self.df, self._n()
         lines: List[str] = []
         if "focus" in df.columns:
-            sharp = (df["focus"] == "Good, razor sharp").sum()
-            multi = (df["focus"] == "I was multi-tasking, not good focus").sum()
+            fs = df["focus"].astype(str).str.strip()
+            sharp = int((fs == "Good, razor sharp").sum())
+            multi = int((fs == "I was multi-tasking, not good focus").sum())
             lines.append(f"• Focus sharp: {sharp}/{n} · multitask: {multi}/{n}")
         if "day_overview" in df.columns:
-            easy = (df["day_overview"] == DAY_OVERVIEW_EASY).sum()
-            hard = (df["day_overview"] == DAY_OVERVIEW_HARD_ENJOYED).sum()
-            burn = (df["day_overview"] == DAY_OVERVIEW_HARD_BURNED).sum()
-            proc = (df["day_overview"] == DAY_OVERVIEW_PROCRASTINATED).sum()
+            dos = df["day_overview"].astype(str).str.strip()
+            easy = int((dos == DAY_OVERVIEW_EASY).sum())
+            hard = int((dos == DAY_OVERVIEW_HARD_ENJOYED).sum())
+            burn = int((dos == DAY_OVERVIEW_HARD_BURNED).sum())
+            proc = int((dos == DAY_OVERVIEW_PROCRASTINATED).sum())
             lines.append(
                 f"• Day: easy {easy} · hard+enjoyed {hard} · burned {burn} · procrastinated {proc}"
             )
@@ -426,17 +466,22 @@ class PersonalizationAnalyzer:
         df, n = self.df, self._n()
         lines: List[str] = []
         if "happiness" in df.columns:
-            happy = (df["happiness"] == "Yes, I am happy").sum()
-            lines.append(f"• Happy w/ performance: {happy}/{n}")
+            hs = df["happiness"].astype(str).str.strip()
+            h_yes = int((hs == HAPPY_YES).sum())
+            h_neu = int((hs == HAPPY_NEUTRAL).sum())
+            h_bad = int((hs == HAPPY_BAD).sum())
+            lines.append(
+                f"• Happy w/ today: {h_yes}/{n} · neutral {h_neu} · low {h_bad}"
+            )
         if "marriage" in df.columns:
-            g = (df["marriage"] == "Good").sum()
-            ok = (df["marriage"] == "Okayish").sum()
-            bad = (df["marriage"] == "Not good").sum()
-            lines.append(f"• Marriage: good {g} · ok {ok} · not good {bad}")
+            ms = df["marriage"].astype(str).str.strip()
+            g = int((ms == MARRIAGE_GOOD).sum())
+            ok = int((ms == MARRIAGE_OKAYISH).sum())
+            bad = int((ms == MARRIAGE_NOT_GOOD).sum())
+            lines.append(f"• Marriage: good {g} · okayish {ok} · not good {bad}")
         if "performance" in df.columns:
-            b = (df["performance"] == "Yes, better than yesterday").sum()
-            w = (df["performance"] == "Worst than yesterday").sum()
-            lines.append(f"• vs yesterday: better {b} · worse {w}")
+            b, same, w = _performance_counts(df)
+            lines.append(f"• vs yesterday: better {b} · same {same} · worse {w}")
         return lines
 
     def _append_section(
@@ -558,9 +603,11 @@ class PersonalizationAnalyzer:
             )
         df = self.df
         if "focus" in df.columns and "day_overview" in df.columns:
-            sharp = (df["focus"] == "Good, razor sharp").sum()
-            multi = (df["focus"] == "I was multi-tasking, not good focus").sum()
-            proc = (df["day_overview"] == DAY_OVERVIEW_PROCRASTINATED).sum()
+            fs = df["focus"].astype(str).str.strip()
+            sharp = int((fs == "Good, razor sharp").sum())
+            multi = int((fs == "I was multi-tasking, not good focus").sum())
+            dos = df["day_overview"].astype(str).str.strip()
+            proc = int((dos == DAY_OVERVIEW_PROCRASTINATED).sum())
             if multi > sharp or proc >= 3:
                 out.append("Focus: fewer tabs, time-blocks; reduce procrastination")
         if marriage["score"] < 60:

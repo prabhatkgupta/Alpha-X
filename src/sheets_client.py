@@ -5,7 +5,7 @@ from google.oauth2.service_account import Credentials
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
-from config import GOOGLE_SHEET_ID, GOOGLE_CREDENTIALS_PATH, COLUMN_MAPPING
+from config import GOOGLE_SHEET_ID, GOOGLE_CREDENTIALS_PATH, apply_sheet_column_mapping
 
 
 class SheetsClient:
@@ -60,8 +60,7 @@ class SheetsClient:
         # Convert to DataFrame
         df = pd.DataFrame(records)
 
-        # Rename columns using mapping
-        df = df.rename(columns=COLUMN_MAPPING)
+        df = apply_sheet_column_mapping(df)
 
         # Parse timestamp
         if "timestamp" in df.columns:

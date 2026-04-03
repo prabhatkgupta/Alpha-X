@@ -9,7 +9,8 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from analyzer import PersonalizationAnalyzer
+from analyzer import PersonalizationAnalyzer, _performance_counts
+from config import apply_sheet_column_mapping
 
 
 @pytest.fixture
@@ -78,6 +79,19 @@ def test_marriage_analysis(sample_data):
     assert "score" in marriage
 
 
+def test_marriage_okayish_only_form():
+    """Form with only Okayish | Not good still scores and has_data."""
+    df = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2026-01-05", periods=5),
+            "marriage": ["Okayish", "Okayish", "Not good", "Okayish", "Okayish"],
+        }
+    )
+    m = PersonalizationAnalyzer(df).analyze_marriage()
+    assert m["has_data"] is True
+    assert m["score"] >= 60
+
+
 def test_overall_performance(sample_data):
     """Test overall performance analysis."""
     analyzer = PersonalizationAnalyzer(sample_data)
@@ -101,6 +115,32 @@ def test_generate_weekly_report(sample_data):
     assert "Health" in report
     assert "Focus" in report
     assert "Happy & misc" in report
+    assert "vs yesterday:" in report
+    assert "same" in report
+    assert "Happy w/ today:" in report
+
+
+def test_apply_sheet_column_mapping_strips_headers():
+    df = pd.DataFrame(
+        [["Same as yesterday"]],
+        columns=["  You did better overall ?  "],
+    )
+    out = apply_sheet_column_mapping(df)
+    assert "performance" in out.columns
+    assert out["performance"].iloc[0] == "Same as yesterday"
+
+
+def test_performance_counts_strips_cells():
+    df = pd.DataFrame(
+        {
+            "performance": [
+                "  Yes, better than yesterday  ",
+                "Same as yesterday",
+                "Worst than yesterday",
+            ]
+        }
+    )
+    assert _performance_counts(df) == (1, 1, 1)
 
 
 def test_days_logged_ratio_partial_week():
